@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type PathHandle struct {
+type MuxHandle struct {
 	Method  string
 	Handler http.HandlerFunc
 }
@@ -21,38 +21,52 @@ type MuxRouter struct {
 	router      *mux.Router
 	prefix      string
 	middleware  []func(next http.Handler) http.Handler
-	pathHandle  map[string]PathHandle
+	handlers    map[string]MuxHandle
 	healthCheck bool
 	logRequest  bool
 	cors        bool
 	recovery    bool
 }
 
-func NewMuxRouter(port string) *MuxRouter {
+func NewMuxRouter(port string) Router {
 	return &MuxRouter{
 		port:       port,
 		router:     mux.NewRouter(),
 		middleware: make([]func(next http.Handler) http.Handler, 0),
-		pathHandle: make(map[string]PathHandle, 0),
+		handlers:   make(map[string]MuxHandle, 0),
 	}
 }
 
-func (r *MuxRouter) AddPrefix(prefix string) *MuxRouter {
+func (r *MuxRouter) Default() {
+	r.
+		AllowCors().
+		AllowHealthCheck().
+		AllowLog().
+		AllowRecovery().
+		ServeHTTP()
+}
+
+func (r *MuxRouter) AddPrefix(prefix string) Router {
 	r.prefix = prefix
 	return r
 }
 
-func (r *MuxRouter) AllowLog() *MuxRouter {
+func (r *MuxRouter) AllowRecovery() Router {
+	r.recovery = true
+	return r
+}
+
+func (r *MuxRouter) AllowLog() Router {
 	r.logRequest = true
 	return r
 }
 
-func (r *MuxRouter) AllowHealthCheck() *MuxRouter {
+func (r *MuxRouter) AllowHealthCheck() Router {
 	r.healthCheck = true
 	return r
 }
 
-func (r *MuxRouter) AllowCors() *MuxRouter {
+func (r *MuxRouter) AllowCors() Router {
 	r.cors = true
 	return r
 }
@@ -61,10 +75,10 @@ func (r *MuxRouter) ServeHTTP() {
 	r.router.PathPrefix(r.prefix)
 	// middleware
 	if r.logRequest {
-		r.AddMiddleware(logRequest)
+		r.AddMiddleware(r.logRequestlMiddleware)
 	}
 	if r.cors {
-		r.AddMiddleware(accessControlMiddleware)
+		r.AddMiddleware(r.accessControlMiddleware)
 	}
 
 	for _, h := range r.middleware {
@@ -73,14 +87,14 @@ func (r *MuxRouter) ServeHTTP() {
 
 	// handler
 	if r.healthCheck {
-		r.AddPath("/health", "GET", healthCheck)
+		r.AddPath("/health", "GET", r.healthCheckHandler)
 	}
 
-	for p, h := range r.pathHandle {
+	for p, h := range r.handlers {
 		r.router.HandleFunc(p, h.Handler).Methods(h.Method)
 	}
 	if r.recovery {
-		r.router.Use(recovery)
+		r.router.Use(r.recoverylMiddleware)
 	}
 
 	// server
@@ -95,20 +109,20 @@ func (r *MuxRouter) ServeHTTP() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
-	Json(w, 200, map[string]interface{}{
+func (MuxRouter) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	MuxJson(w, 200, map[string]interface{}{
 		"message": "service is running",
 	})
 }
 
-func logRequest(next http.Handler) http.Handler {
+func (MuxRouter) logRequestlMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("request: " + r.RemoteAddr + ", method: " + r.Method + ", path: " + r.RequestURI)
 		next.ServeHTTP(w, r)
 	})
 }
 
-func accessControlMiddleware(next http.Handler) http.Handler {
+func (MuxRouter) accessControlMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
@@ -122,7 +136,7 @@ func accessControlMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func recovery(next http.Handler) http.Handler {
+func (MuxRouter) recoverylMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
@@ -140,7 +154,7 @@ func recovery(next http.Handler) http.Handler {
 }
 
 func (r *MuxRouter) AddPath(path, method string, handler http.HandlerFunc) *MuxRouter {
-	r.pathHandle[path] = PathHandle{
+	r.handlers[path] = MuxHandle{
 		Method:  method,
 		Handler: handler,
 	}
@@ -152,7 +166,7 @@ func (r *MuxRouter) AddMiddleware(middleware func(next http.Handler) http.Handle
 	return r
 }
 
-func Json(w http.ResponseWriter, code int, v interface{}) {
+func MuxJson(w http.ResponseWriter, code int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(v)
