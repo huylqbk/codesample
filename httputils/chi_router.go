@@ -79,6 +79,9 @@ func (r *ChiRouter) ServeHTTP() {
 	if r.cors {
 		r.AddMiddleware(r.accessControlMiddleware)
 	}
+	if r.recovery {
+		r.AddMiddleware(middleware.Recoverer)
+	}
 
 	for _, h := range r.middleware {
 		r.router.Use(h)
@@ -91,13 +94,10 @@ func (r *ChiRouter) ServeHTTP() {
 
 	r.router.Route(r.prefix, func(router chi.Router) {
 		for p, h := range r.handlers {
-			r.router.Method(h.Method, p, h.Handler)
+			log.Printf("api: %s, method: %s", p, h.Method)
+			router.Method(h.Method, p, h.Handler)
 		}
 	})
-
-	if r.recovery {
-		r.router.Use(middleware.Recoverer)
-	}
 
 	// server
 	server := http.Server{
@@ -131,7 +131,7 @@ func (ChiRouter) accessControlMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (r *ChiRouter) AddPath(path, method string, handler http.HandlerFunc) *ChiRouter {
+func (r *ChiRouter) AddPath(path, method string, handler http.HandlerFunc) Router {
 	r.handlers[path] = ChiHandle{
 		Method:  method,
 		Handler: handler,
@@ -139,7 +139,7 @@ func (r *ChiRouter) AddPath(path, method string, handler http.HandlerFunc) *ChiR
 	return r
 }
 
-func (r *ChiRouter) AddMiddleware(middleware func(next http.Handler) http.Handler) *ChiRouter {
+func (r *ChiRouter) AddMiddleware(middleware func(next http.Handler) http.Handler) Router {
 	r.middleware = append(r.middleware, middleware)
 	return r
 }

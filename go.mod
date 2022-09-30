@@ -5,7 +5,10 @@ go 1.18
 require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gorilla/mux v1.8.0
+	github.com/joho/godotenv v1.4.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/labstack/echo/v4 v4.9.0
+	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.1.2
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/postgres v1.3.8
