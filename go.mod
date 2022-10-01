@@ -3,6 +3,7 @@ module github.com/huylqbk/codesample
 go 1.18
 
 require (
+	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.4.0
@@ -10,12 +11,15 @@ require (
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.1.2
+	github.com/sirupsen/logrus v1.8.1
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/postgres v1.3.8
 	gorm.io/gorm v1.23.8
 )
 
 require (
+	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
+	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.2 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
