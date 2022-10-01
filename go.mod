@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
