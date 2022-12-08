@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,18 +11,24 @@ import (
 )
 
 type logrusLogger struct {
-	log    *logrus.Logger
-	caller bool
-	level  int
-	file   bool
+	log       *logrus.Logger
+	caller    bool
+	level     int
+	file      bool
+	sentryUrl string
 }
 
-func NewLogger(sentryUrl string) Logger {
+func NewLogger() Logger {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
+	logObj = &logrusLogger{log: log}
+	return logObj
+}
 
+func (l *logrusLogger) SetSentry(sentryUrl string) Logger {
+	l.sentryUrl = sentryUrl
 	if sentryUrl != "" {
 		hook, err := logrus_sentry.NewSentryHook(sentryUrl, []logrus.Level{
 			logrus.FatalLevel,
@@ -29,18 +36,25 @@ func NewLogger(sentryUrl string) Logger {
 		})
 
 		if err == nil {
-			log.Hooks.Add(hook)
+			l.log.Hooks.Add(hook)
 		}
 	}
-
-	logObj = &logrusLogger{log: log}
-	return logObj
+	return l
 }
 
-func (l *logrusLogger) LogFile() Logger {
-	l.file = true
-	mw := io.MultiWriter(os.Stdout, getWriter(""))
+func (l *logrusLogger) LogFile(path string) Logger {
+	if path == "" {
+		path = "./log"
+	}
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(path, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	}
+	mw := io.MultiWriter(os.Stdout, getWriter(path))
 	l.log.SetOutput(mw)
+	l.file = true
 	return l
 }
 

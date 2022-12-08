@@ -18,7 +18,7 @@ type Logger interface {
 	Fatal(msg string, keyvals ...interface{})
 	SetCaller() Logger
 	SetLevel(level int) Logger
-	LogFile() Logger
+	LogFile(path string) Logger
 }
 
 var logObj Logger
