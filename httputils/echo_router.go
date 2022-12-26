@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -74,7 +73,6 @@ func (r *EchoRouter) AllowCors() Router {
 }
 
 func (r *EchoRouter) ServeHTTP() {
-
 	// middleware
 	if r.logRequest {
 		r.AddMiddleware(middleware.Logger())
@@ -82,10 +80,19 @@ func (r *EchoRouter) ServeHTTP() {
 	if r.cors {
 		r.AddMiddleware(middleware.CORS())
 	}
+	// default enable gzip
+	r.AddMiddleware(middleware.Gzip())
 
 	for _, h := range r.middleware {
 		r.router.Use(h)
 	}
+	shutdownCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	r.router.POST("/quit", func(c echo.Context) error {
+		cancel()
+		return c.String(http.StatusOK, "OK")
+	})
 
 	// handler
 	if r.healthCheck {
@@ -105,18 +112,15 @@ func (r *EchoRouter) ServeHTTP() {
 	go func() {
 		log.Println("Server started on: " + r.port)
 		if err := r.router.Start(":" + r.port); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("[CRITICAL] Shutting down the server: %+v\n", err)
+			log.Fatal("shutting down the server")
 		}
 	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
+	<-shutdownCtx.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	log.Println("router stopped")
 	if err := r.router.Shutdown(ctx); err != nil {
-		log.Fatalf("[CRITICAL] Server shutdown failed: %+v", err)
+		log.Fatal(err)
 	}
 }
 

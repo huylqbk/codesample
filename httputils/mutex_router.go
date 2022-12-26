@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -104,9 +107,18 @@ func (r *MuxRouter) ServeHTTP() {
 		WriteTimeout: 60 * time.Second,
 		ReadTimeout:  60 * time.Second,
 	}
+	errs := make(chan error)
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		errs <- fmt.Errorf("%s", <-c)
+	}()
+	go func() {
+		log.Println("Server started on: " + r.port)
+		log.Fatal(server.ListenAndServe())
+	}()
 
-	log.Println("Server started on: " + r.port)
-	log.Fatal(server.ListenAndServe())
+	log.Println("exit", <-errs)
 }
 
 func (MuxRouter) healthCheckHandler(w http.ResponseWriter, r *http.Request) {

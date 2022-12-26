@@ -1,8 +1,13 @@
 package main
 
-import "github.com/huylqbk/codesample/logger"
+import "github.com/huylqbk/codesample/httputils"
 
 func main() {
-	log := logger.NewLogger().LogFile("./log").SetCaller().SetLevel(5)
-	log.Info("main", "key", "value")
+	httputils.
+		NewEchoRouter("8080").
+		AddPrefix("/v1").
+		AllowCors().
+		AllowRecovery().
+		AllowHealthCheck().
+		ServeHTTP()
 }
