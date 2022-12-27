@@ -1,13 +1,17 @@
 package main
 
-import "github.com/huylqbk/codesample/httputils"
+import (
+	"fmt"
+	"time"
+
+	"github.com/huylqbk/codesample/httpclient"
+)
 
 func main() {
-	httputils.
-		NewEchoRouter("8080").
-		AddPrefix("/v1").
-		AllowCors().
-		AllowRecovery().
-		AllowHealthCheck().
-		ServeHTTP()
+	r, err := httpclient.New().
+		SetURL("https://api.agify.io/?name=bella").
+		SetMethod("GET").
+		SetTimeout(60 * time.Second).
+		Execute()
+	fmt.Println(string(r), err)
 }
